@@ -6,3 +6,8 @@ output "cloudfront_domain_name" {
   description = "The domain of the main CloudFront distribution."
   value       = module.proxy.cloudfront_domain_name
 }
+
+output "cloudfront_distribution" {
+  description = "The main CloudFront distribution"
+  value = module.proxy.cloudfront_distribution
+}
