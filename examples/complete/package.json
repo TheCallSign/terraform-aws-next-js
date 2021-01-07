@@ -2,11 +2,6 @@
   "name": "terraform-next-js-example-complete",
   "version": "1.0.0",
   "private": true,
-  "workspaces": {
-    "nohoist": [
-      "**"
-    ]
-  },
   "scripts": {
     "dev": "next",
     "build": "next build",
@@ -19,7 +14,7 @@
     "react-dom": "latest"
   },
   "devDependencies": {
-    "@dealmore/terraform-next-build": "^0.1.0"
+    "tf-next": "^0.2.0"
   },
   "license": "MIT"
 }

@@ -1,6 +1,12 @@
 import { build } from '@dealmore/next-tf';
 import tmp from 'tmp';
-import { glob, Lambda, FileFsRef, streamToBuffer } from '@vercel/build-utils';
+import {
+  glob,
+  Lambda,
+  FileFsRef,
+  streamToBuffer,
+  Prerender,
+} from '@vercel/build-utils';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { Route } from '@vercel/routing-utils';
@@ -8,14 +14,11 @@ import archiver from 'archiver';
 import * as util from 'util';
 
 import { ConfigOutput } from '../types';
+import { removeRoutesByPrefix } from '../utils/routes';
 
-interface Lambdas {
-  [key: string]: Lambda;
-}
-
-interface StaticWebsiteFiles {
-  [key: string]: FileFsRef;
-}
+type Lambdas = Record<string, Lambda>;
+type Prerenders = Record<string, Prerender>;
+type StaticWebsiteFiles = Record<string, FileFsRef>;
 
 function getFiles(basePath: string) {
   return glob('**', {
@@ -24,10 +27,15 @@ function getFiles(basePath: string) {
   });
 }
 
+interface PrerenderOutputProps {
+  lambda: string;
+}
+
 interface OutputProps {
   buildId: string;
   routes: Route[];
   lambdas: Lambdas;
+  prerenders: Record<string, PrerenderOutputProps>;
   staticWebsiteFiles: StaticWebsiteFiles;
   outputDir: string;
 }
@@ -40,7 +48,7 @@ function writeStaticWebsiteFiles(
   outputFile: string,
   files: StaticWebsiteFiles
 ) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise<void>(async (resolve, reject) => {
     // Create a zip package for the static website files
     const output = fs.createWriteStream(outputFile);
     const archive = archiver('zip', {
@@ -73,6 +81,7 @@ function writeOutput(props: OutputProps) {
     staticRoutes: [],
     routes: props.routes,
     buildId: props.buildId,
+    prerenders: props.prerenders,
     staticFilesArchive: 'static-website-files.zip',
   };
 
@@ -120,6 +129,7 @@ interface BuildProps {
   logLevel?: 'verbose' | 'none';
   deleteBuildCache?: boolean;
   cwd: string;
+  target?: 'AWS';
 }
 
 async function buildCommand({
@@ -127,12 +137,16 @@ async function buildCommand({
   logLevel,
   deleteBuildCache = true,
   cwd,
+  target = 'AWS',
 }: BuildProps) {
   let buildOutput: OutputProps | null = null;
   const mode = skipDownload ? 'local' : 'download';
 
   // On download create a tmp dir where the files can be downloaded
-  const tmpDir = mode === 'download' ? tmp.dirSync() : null;
+  const tmpDir =
+    mode === 'download'
+      ? tmp.dirSync({ unsafeCleanup: deleteBuildCache })
+      : null;
 
   const entryPath = cwd;
   const entrypoint = 'package.json';
@@ -146,6 +160,7 @@ async function buildCommand({
 
   try {
     const lambdas: Lambdas = {};
+    const prerenders: Prerenders = {};
     const staticWebsiteFiles: StaticWebsiteFiles = {};
 
     const buildResult = await build({
@@ -167,18 +182,47 @@ async function buildCommand({
     );
 
     for (const [key, file] of Object.entries(buildResult.output)) {
-      if (file.type === 'Lambda') {
-        // Filter for lambdas
-        lambdas[key] = (file as unknown) as Lambda;
-      } else if (file.type === 'FileFsRef') {
-        // Filter for static Website content
-        staticWebsiteFiles[key] = file as FileFsRef;
+      switch (file.type) {
+        case 'Lambda': {
+          lambdas[key] = (file as unknown) as Lambda;
+          break;
+        }
+        case 'Prerender': {
+          prerenders[key] = (file as unknown) as Prerender;
+          break;
+        }
+        case 'FileFsRef': {
+          staticWebsiteFiles[key] = file as FileFsRef;
+          break;
+        }
       }
     }
 
+    // Build the mapping for prerendered routes
+    const prerenderedOutput: Record<string, PrerenderOutputProps> = {};
+    for (const [key, prerender] of Object.entries(prerenders)) {
+      // Find the matching the Lambda route
+      const match = Object.entries(lambdas).find(([, lambda]) => {
+        return lambda === prerender.lambda;
+      });
+
+      if (match) {
+        const [lambdaKey] = match;
+        prerenderedOutput[`/${key}`] = { lambda: lambdaKey };
+      }
+    }
+
+    // Routes that are not handled by the AWS proxy module `_next/static/*` are filtered out
+    // for better performance
+    const optimizedRoutes =
+      target === 'AWS'
+        ? removeRoutesByPrefix(buildResult.routes, '_next/static/')
+        : buildResult.routes;
+
     buildOutput = {
       buildId,
-      routes: buildResult.routes,
+      prerenders: prerenderedOutput,
+      routes: optimizedRoutes,
       lambdas,
       staticWebsiteFiles,
       outputDir: outputDir,
@@ -187,7 +231,7 @@ async function buildCommand({
 
     if (logLevel === 'verbose') {
       console.log(
-        util.format('Routes:\n%s', JSON.stringify(buildResult.routes, null, 2))
+        util.format('Routes:\n%s', JSON.stringify(optimizedRoutes, null, 2))
       );
     }
 
@@ -202,7 +246,6 @@ async function buildCommand({
 
   // Cleanup tmpDir
   if (tmpDir && deleteBuildCache) {
-    fs.emptyDirSync(tmpDir.name);
     tmpDir.removeCallback();
   }
 

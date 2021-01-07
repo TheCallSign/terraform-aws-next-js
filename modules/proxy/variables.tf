@@ -12,7 +12,6 @@ variable "static_bucket_endpoint" {
 
 variable "cloudfront_price_class" {
   type    = string
-  default = "PriceClass_100"
 }
 
 variable "proxy_config_json" {
@@ -21,7 +20,7 @@ variable "proxy_config_json" {
 
 variable "proxy_module_version" {
   type    = string
-  default = "0.1.0"
+  default = "0.3.0"
 }
 
 variable "debug_use_local_packages" {

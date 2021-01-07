@@ -10,6 +10,18 @@ jobs:
   test-integration:
     runs-on: ubuntu-latest
     container: registry.gitlab.com/dealmore/dealmore-build-images/lambdaci:nodejs12.x
+    services:
+      s3:
+        image: registry.gitlab.com/dealmore/dealmore-build-images:s3-emulator
+        env:
+          MINIO_ACCESS_KEY: test
+          MINIO_SECRET_KEY: testtest
+
+    env:
+      MINIO_ACCESS_KEY: test
+      MINIO_SECRET_KEY: testtest
+      S3_ENDPOINT: s3:9000
+
     steps:
       - uses: actions/checkout@v2
 
@@ -44,7 +56,7 @@ jobs:
         run: yarn --frozen-lockfile --cache-folder .yarn
 
       - name: Build tf-next
-        run: yarn --cwd packages/terraform-next-build build
+        run: yarn --cwd packages/tf-next build
 
       - name: Build e2e fixtures
         run: yarn test:e2e:prepare

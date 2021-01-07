@@ -3,15 +3,19 @@ import * as fs from 'fs';
 import { dirSync as tmpDir } from 'tmp';
 import { stringify as yaml } from 'yaml';
 import { Lambda as AWSLambda } from 'aws-sdk';
-import { CloudFrontRequest, CloudFrontRequestEvent } from 'aws-lambda';
+import {
+  CloudFrontRequest,
+  CloudFrontRequestEvent,
+  CloudFrontResultResponse,
+} from 'aws-lambda';
 import getPort from 'get-port';
 import http from 'http';
 import { URL } from 'url';
+import { ConfigOutput } from 'tf-next/src/types';
 
 import { SAMTemplate } from './types';
 import { getLocalIpAddressFromHost, unzipToLocation } from './utils';
 import { createSAMLocal, SAMLocal } from './SAMLocal';
-import { ConfigOutput } from '@dealmore/terraform-next-build/src/types';
 
 const LambdaFunctionName = 'proxy';
 
@@ -31,7 +35,9 @@ interface SendRequestEventProps {
 export interface SAM {
   start: () => Promise<void>;
   stop: () => Promise<void>;
-  sendRequestEvent(payload: SendRequestEventProps): Promise<CloudFrontRequest>;
+  sendRequestEvent(
+    payload: SendRequestEventProps
+  ): Promise<CloudFrontRequest | CloudFrontResultResponse>;
 }
 
 export async function generateProxySAM({
@@ -46,6 +52,7 @@ export async function generateProxySAM({
     routes: config.routes,
     staticRoutes: config.staticRoutes,
     lambdaRoutes: Object.values(config.lambdas).map((lambda) => lambda.route),
+    prerenders: config.prerenders,
   };
 
   // Generate the SAM yml
@@ -219,7 +226,7 @@ export async function generateProxySAM({
         response.$response.httpResponse.body as string,
         'base64'
       ).toString('utf-8')
-    ) as CloudFrontRequest;
+    ) as CloudFrontRequest | CloudFrontResultResponse;
   }
 
   return {

@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "dependencies": {
     "next": "latest",
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6"
+    "react": "latest",
+    "react-dom": "latest"
   },
   "devDependencies": {
-    "@dealmore/terraform-next-build": "*"
+    "tf-next": "*"
   }
 }

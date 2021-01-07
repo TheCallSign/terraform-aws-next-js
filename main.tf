@@ -5,17 +5,20 @@ locals {
   lambdas              = lookup(local.config_file, "lambdas", {})
   static_files_archive = "${local.config_dir}/${lookup(local.config_file, "staticFilesArchive", "")}"
 
+  # Build the proxy config JSON
   static_routes_json = lookup(local.config_file, "staticRoutes", [])
   routes_json        = lookup(local.config_file, "routes", [])
   lambda_routes_json = flatten([
     for integration_key, integration in local.lambdas : [
-      "${lookup(integration, "route", "/")}"
+      lookup(integration, "route", "/")
     ]
   ])
+  prerenders_json = lookup(local.config_file, "prerenders", {})
   proxy_config_json = jsonencode({
     routes       = local.routes_json
     staticRoutes = local.static_routes_json
     lambdaRoutes = local.lambda_routes_json
+    prerenders   = local.prerenders_json
   })
 }
 
@@ -36,7 +39,10 @@ module "statics_deploy" {
   source = "./modules/statics-deploy"
 
   static_files_archive     = local.static_files_archive
+  expire_static_assets     = var.expire_static_assets
   debug_use_local_packages = var.debug_use_local_packages
+  cloudfront_id            = module.proxy.cloudfront_id
+  cloudfront_arn           = module.proxy.cloudfront_arn
 }
 
 # Lambda
@@ -85,7 +91,7 @@ resource "aws_lambda_permission" "current_version_triggers" {
 locals {
   integrations_keys = flatten([
     for integration_key, integration in local.lambdas : [
-      "ANY ${lookup(integration, "route", "/")}/{proxy+}"
+      "ANY ${lookup(integration, "route", "")}/{proxy+}"
     ]
   ])
   integration_values = flatten([
@@ -100,7 +106,7 @@ locals {
 
 module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
-  version = "0.3.0"
+  version = "0.5.0"
 
   name          = var.deployment_name
   description   = "Managed by Terraform-next.js"
@@ -125,6 +131,7 @@ module "proxy" {
 
   # Forwarding variables
   deployment_name                     = var.deployment_name
+  cloudfront_price_class              = var.cloudfront_price_class
   cloudfront_origins                  = var.cloudfront_origins
   cloudfront_custom_behaviors         = var.cloudfront_custom_behaviors
   cloudfront_alias_domains            = var.domain_names
@@ -155,8 +162,8 @@ resource "aws_route53_record" "alias_domains" {
   type    = "A"
 
   alias {
-    name                   = module.proxy.distribution_domain_name
-    zone_id                = module.proxy.distribution_hosted_zone_id
+    name                   = module.proxy.cloudfront_domain_name
+    zone_id                = module.proxy.cloudfront_hosted_zone_id
     evaluate_target_health = false
   }
 }

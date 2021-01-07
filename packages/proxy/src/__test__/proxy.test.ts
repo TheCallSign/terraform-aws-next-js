@@ -23,6 +23,7 @@ describe('Proxy', () => {
           headers: {
             'x-nextjs-page': '/index',
           },
+          target: 'lambda',
         })
       );
     });
@@ -49,6 +50,7 @@ describe('Proxy', () => {
           headers: {
             'x-nextjs-page': '/test/[...slug]',
           },
+          target: 'lambda',
         })
       );
     });
@@ -89,6 +91,35 @@ describe('Proxy', () => {
           dest: '/__NEXT_PAGE_LAMBDA_0',
           headers: {
             'x-nextjs-page': '/product/[...slug]',
+          },
+          target: 'lambda',
+        })
+      );
+    });
+  });
+
+  describe('Proxy::Routing 003', () => {
+    let proxy: Proxy;
+
+    beforeAll(() => {
+      // Initialize proxy
+      const config = require('./res/config-003.json') as ProxyConfig;
+      proxy = new Proxy(
+        config.routes,
+        config.lambdaRoutes,
+        config.staticRoutes
+      );
+    });
+
+    test('/hello/: Tailing slash', () => {
+      const route = proxy.route('/hello/');
+      expect(route).toEqual(
+        expect.objectContaining({
+          found: true,
+          dest: '/hello/',
+          status: 308,
+          headers: {
+            Location: '/hello',
           },
         })
       );
