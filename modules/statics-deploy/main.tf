@@ -198,7 +198,7 @@ module "deploy_trigger" {
 ###########################
 
 resource "aws_s3_bucket_object" "static_s3_upload" {
-  bucket = aws_s3_bucket.static_upload
+  bucket = aws_s3_bucket.static_upload.id
   key = basename(var.static_files_archive)
   source = abspath(var.static_files_archive)
   etag   = filemd5(var.static_files_archive)
