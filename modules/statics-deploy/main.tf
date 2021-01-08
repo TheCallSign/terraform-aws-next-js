@@ -201,7 +201,7 @@ resource "aws_s3_bucket_object" "static_s3_upload" {
   bucket = aws_s3_bucket.static_upload
   key = basename(var.static_files_archive)
   source = abspath(var.static_files_archive)
-  etag   = filemd5("${path.module}/my_files.zip")
+  etag   = filemd5(var.static_files_archive)
   # Make sure this only runs when the bucket and the lambda trigger are setup
   depends_on = [
     aws_s3_bucket_notification.on_create
