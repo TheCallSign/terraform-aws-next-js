@@ -11,16 +11,25 @@ variable "static_bucket_endpoint" {
 }
 
 variable "cloudfront_price_class" {
-  type    = string
+  type = string
 }
 
 variable "proxy_config_json" {
   type = string
 }
 
+variable "proxy_config_version" {
+  type = number
+
+  validation {
+    condition     = var.proxy_config_version > 0
+    error_message = "Your tf-next package is outdated. Run `npm update tf-next@latest` or `yarn upgrade tf-next@latest`."
+  }
+}
+
 variable "proxy_module_version" {
   type    = string
-  default = "0.3.0"
+  default = "0.4.0"
 }
 
 variable "debug_use_local_packages" {
@@ -59,4 +68,14 @@ variable "cloudfront_viewer_certificate_arn" {
 
 variable "cloudfront_minimum_protocol_version" {
   type = string
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}
+
+variable "lambda_role_permissions_boundary" {
+  type    = string
+  default = null
 }

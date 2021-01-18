@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.6.0 (January 16, 2021)
+
+**⚠️ Breaking Changes ⚠️**
+
+You need to update the `tf-next` package to the latest version in order to use it with the `v0.6.0` release.
+
+```sh
+npm upgrade tf-next@latest   # npm
+yarn upgrade tf-next@latest  # yarn
+```
+
+### Terraform module
+
+- Upgrade to API Gateway Payload V2.0 ([#29](https://github.com/dealmore/terraform-aws-next-js/issues/29), [#31](https://github.com/dealmore/terraform-aws-next-js/pull/31))  
+  This is only an upgrade of the internally API used by Lambda and API Gateway (Not the resource itself, since we already use API Gateway V2). See this [guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html) for a detailed look at the differences between the V1.0 and V2.0 format.
+  It fixes a bug where no multi-value headers could be sent by a SSR or API page.
+- Sends an error message when you try to use the Terraform module together with an old version of `tf-next` ([#5](https://github.com/dealmore/terraform-aws-next-js/issues/5), [#37](https://github.com/dealmore/terraform-aws-next-js/pull/37))
+- Upgrades proxy component to `v0.4.0`
+
+### tf-next (0.4.0)
+
+- Adds a version number to the config file, so that the Terraform module is able to warn about a possible version mismatch ([#5](https://github.com/dealmore/terraform-aws-next-js/issues/5), [#37](https://github.com/dealmore/terraform-aws-next-js/pull/37))
+
+### Proxy (0.4.0)
+
+- Fix to handle `resource` handle type properly
+
+## 0.5.3 (January 15, 2021)
+
+### Terraform module
+
+- Fix: Pass permissions boundary to edge proxy lambda ([#35](https://github.com/dealmore/terraform-aws-next-js/pull/35))
+
+## 0.5.2 (January 14, 2021)
+
+### Terraform module
+
+- Adds `tags` variable to set tags on supported AWS resources ([#34](https://github.com/dealmore/terraform-aws-next-js/pull/34))
+- Adds `lambda_role_permissions_boundary` variable for setting a permission boundary for the Lambda role ([#33](https://github.com/dealmore/terraform-aws-next-js/pull/33))
+
+## 0.5.1 (January 13, 2021)
+
+### Terraform module
+
+- Adds `cloudfront_hosted_zone_id` output ([#30](https://github.com/dealmore/terraform-aws-next-js/pull/30)).
+
 ## 0.5.0 (January 03, 2021)
 
 Happy New Year! 🍾  

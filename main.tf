@@ -6,8 +6,9 @@ locals {
   static_files_archive = "${local.config_dir}/${lookup(local.config_file, "staticFilesArchive", "")}"
 
   # Build the proxy config JSON
-  static_routes_json = lookup(local.config_file, "staticRoutes", [])
-  routes_json        = lookup(local.config_file, "routes", [])
+  config_file_version = lookup(local.config_file, "version", 0)
+  static_routes_json  = lookup(local.config_file, "staticRoutes", [])
+  routes_json         = lookup(local.config_file, "routes", [])
   lambda_routes_json = flatten([
     for integration_key, integration in local.lambdas : [
       lookup(integration, "route", "/")
@@ -43,6 +44,7 @@ module "statics_deploy" {
   debug_use_local_packages = var.debug_use_local_packages
   cloudfront_id            = module.proxy.cloudfront_id
   cloudfront_arn           = module.proxy.cloudfront_arn
+  tags                     = var.tags
 }
 
 # Lambda
@@ -57,6 +59,7 @@ resource "aws_lambda_function" "this" {
   runtime       = lookup(each.value, "runtime", var.lambda_runtime)
   memory_size   = lookup(each.value, "memory", var.lambda_memory_size)
   timeout       = var.lambda_timeout
+  tags          = var.tags
 
   filename         = "${local.config_dir}/${lookup(each.value, "filename", "")}"
   source_code_hash = filebase64sha256("${local.config_dir}/${lookup(each.value, "filename", "")}")
@@ -97,7 +100,7 @@ locals {
   integration_values = flatten([
     for integration_key, integration in local.lambdas : {
       lambda_arn             = aws_lambda_function.this[integration_key].arn
-      payload_format_version = "1.0"
+      payload_format_version = "2.0"
       timeout_milliseconds   = var.lambda_timeout * 1000
     }
   ])
@@ -115,6 +118,8 @@ module "api_gateway" {
   create_api_domain_name = false
 
   integrations = local.integrations
+
+  tags = var.tags
 }
 
 #######
@@ -128,6 +133,7 @@ module "proxy" {
   static_bucket_endpoint        = module.statics_deploy.static_bucket_endpoint
   static_bucket_access_identity = module.statics_deploy.static_bucket_access_identity
   proxy_config_json             = local.proxy_config_json
+  proxy_config_version          = local.config_file_version
 
   # Forwarding variables
   deployment_name                     = var.deployment_name
@@ -138,6 +144,8 @@ module "proxy" {
   cloudfront_viewer_certificate_arn   = var.cloudfront_viewer_certificate_arn
   cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
   debug_use_local_packages            = var.debug_use_local_packages
+  tags                                = var.tags
+  lambda_role_permissions_boundary    = var.lambda_role_permissions_boundary
 
   providers = {
     aws = aws.global_region

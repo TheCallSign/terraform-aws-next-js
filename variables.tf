@@ -33,6 +33,12 @@ variable "expire_static_assets" {
   default     = 30
 }
 
+variable "tags" {
+  description = " The tag metadata to label resources with that support tags."
+  type    = map(string)
+  default = {}
+}
+
 ###################
 # Lambdas (Next.js)
 ###################
@@ -64,6 +70,13 @@ variable "lambda_timeout" {
 variable "lambda_policy_json" {
   description = "An additional policy document as JSON to attach to the Lambda Function role"
   type        = string
+  default     = null
+}
+
+variable "lambda_role_permissions_boundary" {
+  type = string
+  # https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html
+  description = "ARN of IAM policy that scopes aws_iam_role access for the lambda"
   default     = null
 }
 
